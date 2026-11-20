@@ -128,7 +128,7 @@
   <!-- Top Studio Chrome -->
   {#if !studio.focusMode}
     <header
-      class="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4"
+      class="safe-pt flex min-h-12 shrink-0 items-center justify-between gap-2 border-b px-3 py-1.5 sm:px-4"
       style="border-color: var(--border); background: var(--surface);"
     >
       <div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">

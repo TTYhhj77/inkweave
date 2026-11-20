@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.DocumentsContract
+import android.view.ViewGroup
 import android.webkit.DownloadListener
 import android.webkit.JavascriptInterface
 import android.webkit.JsResult
@@ -15,13 +16,16 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -38,6 +42,7 @@ import java.net.URL
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var rootContainer: FrameLayout
     private lateinit var webView: WebView
     private lateinit var engine: GoEngineProcess
     private lateinit var safSync: SafNovelSync
@@ -75,8 +80,36 @@ class MainActivity : AppCompatActivity() {
         engine = GoEngineProcess(applicationContext)
         safSync = SafNovelSync(applicationContext)
 
-        webView = WebView(this)
-        setContentView(webView)
+        // Consistent edge-to-edge across Android 8–15 with native inset padding
+        // so the top status bar / camera cutout and bottom nav bar / keyboard NEVER overlap UI.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        rootContainer = FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        webView = WebView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        rootContainer.addView(webView)
+        setContentView(rootContainer)
+
+        ViewCompat.setOnApplyWindowInsetsListener(rootContainer) { v, insets ->
+            val safe = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or
+                    WindowInsetsCompat.Type.displayCutout() or
+                    WindowInsetsCompat.Type.ime()
+            )
+            v.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
+        ViewCompat.requestApplyInsets(rootContainer)
+
         applyNativeTheme("paper")
 
         with(webView.settings) {
@@ -260,15 +293,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyNativeTheme(theme: String) {
         val (bgHex, isLight) = when (theme) {
-            "warm-dark" -> "#171614" to false
-            "sepia" -> "#F3ECD8" to true
-            else -> "#FAF8F4" to true
+            "warm-dark" -> "#201E1B" to false
+            "sepia" -> "#E9DEC2" to true
+            else -> "#F2EDE3" to true
         }
         val color = Color.parseColor(bgHex)
+        rootContainer.setBackgroundColor(color)
+        webView.setBackgroundColor(color)
         @Suppress("DEPRECATION")
-        window.statusBarColor = color
+        window.statusBarColor = Color.TRANSPARENT
         @Suppress("DEPRECATION")
-        window.navigationBarColor = color
+        window.navigationBarColor = Color.TRANSPARENT
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = isLight
             isAppearanceLightNavigationBars = isLight

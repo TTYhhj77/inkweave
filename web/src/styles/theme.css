@@ -264,6 +264,10 @@ body {
   background-color: var(--accent-soft) !important;
 }
 
+.safe-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 .safe-pb {
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }

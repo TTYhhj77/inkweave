@@ -49,7 +49,7 @@ try {
 
     Write-Host "4/4 Exporting & verifying signed APK..."
     New-Item -ItemType Directory -Force -Path "dist" | Out-Null
-    $outApk = "dist\Inkweave-v0.2.0-signed.apk"
+    $outApk = "dist\Inkweave-v0.2.1-signed.apk"
     Copy-Item "mobile\android\app\build\outputs\apk\release\app-release.apk" $outApk -Force
     & "$env:ANDROID_HOME\build-tools\35.0.0\apksigner.bat" verify --verbose $outApk
     Write-Host "Signed APK ready: $(Resolve-Path $outApk)"
