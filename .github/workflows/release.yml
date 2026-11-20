@@ -1,0 +1,113 @@
+name: Release Binaries & Android APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-pc:
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            ext: .exe
+          - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: darwin
+            goarch: arm64
+            ext: ""
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - name: Build UI
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Cross-compile Go single binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w" -o dist/inkweave-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }} ./cmd/inkweave
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inkweave-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - name: Build UI
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+      - name: Install NDK & Gradle
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> $GITHUB_ENV
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build gomobile AAR
+        run: |
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest
+          gomobile init
+          mkdir -p mobile/android/app/libs
+          gomobile bind -v -androidapi 26 -target=android/arm64,android/arm -o mobile/android/app/libs/inkweavecore.aar ./mobile/gomobile
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.11.1"
+      - name: Assemble Android APK
+        working-directory: mobile/android
+        run: gradle assembleDebug
+      - name: Stage APK artifact
+        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk inkweave-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inkweave-android-apk
+          path: inkweave-android.apk
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-pc, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

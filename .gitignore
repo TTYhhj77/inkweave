@@ -1,0 +1,33 @@
+# Build artifacts
+/bin/
+*.exe
+*.aar
+*.apk
+*.aab
+
+# Dependencies & frontend build artifacts
+web/node_modules/
+internal/webui/dist/assets/
+internal/webui/dist/*.js
+internal/webui/dist/*.css
+
+# Local data & novel workspaces
+.inkweave/
+data/
+secrets.json
+
+# Android Gradle cache & build
+mobile/android/.gradle/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/local.properties
+mobile/android/app/libs/*.aar
+mobile/android/app/src/main/jniLibs/
+mobile/android/keystore/*.jks
+*.keystore
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
